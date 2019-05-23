@@ -37,6 +37,25 @@ def calculate_30_days_series(daily_returns_matrix):
         day += 1
     return series_30_days_trailing
 
+#Generate the maximum number of sample intervals from a given TimeSeries
+def calculate_intervals(timeseries, interval_length):
+    number_intervals = timeseries.shape[0] - interval_length
+    intervals = np.empty([number_intervals, interval_length])
+
+    interval = 0
+    iteration = 0
+    i = 0;
+
+    while(i < timeseries.shape[0]-1):
+        if(iteration == interval_length):
+            iteration = 0
+            interval += 1
+            i -= interval_length-1
+        intervals[interval][iteration] = timeseries[i]
+        iteration += 1
+        i += 1
+    return intervals
+
 def normalise_time_series(time_series_matrix):
     number_intervals = time_series_matrix.shape[0]
     series_length = time_series_matrix.shape[1]
@@ -67,17 +86,26 @@ def k_nearest_neighbour_regression(regressor, training_set, labels, neighbors):
     return neigh.predict([regressor])
 
 def test_accuracy(test_set, test_labels, training_set, training_labels, neighbors):
-
+    same = 0
     for i in range(test_set.shape[0]):
-        temp_result = k_nearest_neighbour_regression(test_set[i,:],training_set, training_labels, neighbors)
-        print(str(temp_result*100-100) + ' ' + str(test_labels[i]*100-100))
+        prediction = k_nearest_neighbour_regression(test_set[i,:],training_set, training_labels, neighbors)
+        prediction = prediction*100-100
+        actual = test_labels[i]*100-100
+
+        if(np.sign(prediction) == np.sign(actual)):
+            same +=1
+        print(str(prediction) + ' ' + str(actual))
+    print("Correct sign %: " + str(float(same/len(test_set))))
 
 #Main
-data, meta_data = API_daily_close_time_series('DAX')
-trailing_30_days = calculate_30_days_series(data)
-normalised_30_days_trailing = normalise_time_series(trailing_30_days)
-normalised_30_days_trailing_labeled = labelled_time_series(normalised_30_days_trailing)
-test_values = normalised_30_days_trailing_labeled[0:20,]
-training_values = normalised_30_days_trailing_labeled[20:161,]
-
-test_accuracy(test_values[:,0:30], test_values[:,30], training_values[:,0:30], training_values[:,30], 5)
+data, meta_data = API_daily_close_time_series('SPX')
+intervals = calculate_intervals(data, 30)
+intervals_normalized = normalise_time_series(intervals)
+intervals_normalized_labelled = labelled_time_series(intervals_normalized)
+# print(intervals_normalized_labelled.shape)
+#
+# print(intervals_normalized_labelled[:,4840:])
+test_values = intervals_normalized_labelled[0:50,]
+training_values = intervals_normalized_labelled[50:4848,]
+#
+test_accuracy(test_values[:,0:30], test_values[:,30], training_values[:,0:30], training_values[:,30], 10)
